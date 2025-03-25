@@ -1,13 +1,14 @@
-import adapter from '@sveltejs/adapter-static'
-import 'dotenv/config'
+// svelte.config.js
+import adapter from '@sveltejs/adapter-static';
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
-   kit: {
-      adapter: adapter({
-         pages: process.env.BUILD_DIR || 'build'
-      })
-   }
-}
+  kit: {
+    adapter: adapter(),
+    prerender: {
+      default: true
+    }
+  }
+};
 
-export default config
+export default config;
