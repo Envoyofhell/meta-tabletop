@@ -9,30 +9,30 @@ import 'dotenv/config';
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
   // Add preprocessing support for Svelte components
-  // This is essential for handling TypeScript, SCSS, etc.
   preprocess: vitePreprocess(),
   
   kit: {
     // Configure the static adapter for Cloudflare Pages
-    // The adapter converts your app to static files that Cloudflare can serve
     adapter: adapter({
       // Output directory (can be overridden by BUILD_DIR env var)
-      pages: process.env.BUILD_DIR || 'build',
-      assets: process.env.BUILD_DIR || 'build',
+      pages: 'build',
+      assets: 'build',
       
       // Enable SPA mode with client-side routing
-      // This makes all routes fall back to index.html, letting the client router handle them
       fallback: 'index.html',
       
       // Disable precompression since Cloudflare handles this automatically
       precompress: false,
       
-      // Ensure strict mode is disabled (can help with some adapter compatibility issues)
+      // Ensure strict mode is disabled for compatibility
       strict: false
     }),
     
     // Prerendering configuration for static site generation
     prerender: {
+      // Enable crawling for static site generation
+      crawl: true,
+      
       // Handle errors during prerendering process
       handleHttpError: ({ path, referrer, message }) => {
         // Ignore expected "Not found" errors for client-side routes
@@ -44,15 +44,19 @@ const config = {
         console.error(`Error while prerendering: ${path} from ${referrer}: ${message}`);
         throw new Error(message);
       },
-      // Ensure prerendering works with your routing strategy
+      
+      // Handle missing IDs during prerendering
       handleMissingId: 'ignore'
     },
     
     // Content Security Policy configuration
-    // This defines which resources your app can load
     csp: {
       mode: 'auto',
       directives: {
+        'default-src': ['self'],
+        'script-src': ['self', 'unsafe-inline'],
+        'style-src': ['self', 'unsafe-inline'],
+        'img-src': ['self', 'data:', 'https://images.pokemontcg.io', 'https://limitlesstcg.nyc3.digitaloceanspaces.com'],
         'connect-src': [
           'self',
           // API domain
@@ -68,13 +72,17 @@ const config = {
     
     // Path aliases for cleaner imports in your code
     alias: {
-      '$components': 'src/lib/components',
-      '$stores': 'src/lib/stores'
+      '$lib': './src/lib',
+      '$components': './src/lib/components',
+      '$stores': './src/lib/stores',
+      '$util': './src/lib/util'
     },
     
     // Ensure proper environment variable handling
     env: {
-      dir: '.'
+      dir: '.',
+      publicPrefix: 'PUBLIC_',
+      privatePrefix: 'PRIVATE_'
     }
   }
 };

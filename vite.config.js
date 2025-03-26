@@ -31,8 +31,17 @@ export default defineConfig({
       include: [/node_modules/]
     },
     
-    // Enable source maps for debugging
-    sourcemap: process.env.NODE_ENV !== 'prod'
+    // Enable source maps for development only
+    sourcemap: process.env.NODE_ENV !== 'prod',
+    
+    // Optimize output for Cloudflare Pages
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['socket.io-client'],
+        }
+      }
+    }
   },
   
   // Define environment variables to be replaced in client code
@@ -52,7 +61,15 @@ export default defineConfig({
     host: true,
     
     // Enable CORS for local development
-    cors: true
+    cors: true,
+    
+    // Proxy API requests to the worker during development
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8787',
+        changeOrigin: true
+      }
+    }
   },
   
   // Preview server configuration (for local previewing of built site)

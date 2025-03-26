@@ -10,7 +10,7 @@
 // Get API URL from environment variables or use default for development
 const API_BASE = 
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_WORKER_URL) || 
-  'http://localhost:8787';
+  'https://api.tabletop.meta-ptcg.org';
 
 // Event dispatcher for WebSocket events
 const listeners = new Map();
