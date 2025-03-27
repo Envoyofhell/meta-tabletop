@@ -182,7 +182,7 @@
 
 <Controls />
 
-<div class="h-screen overflow-y-auto flex-1" on:contextmenu|capture|preventDefault>
+<div class="h-screen overflow-y-auto flex-1" role="application" on:contextmenu|capture|preventDefault>
    <div class="game flex flex-col h-full max-w-[1920px] m-auto select-none relative">
 
       <CardMenu bind:this={cardMenu} selection={cardSelection} />

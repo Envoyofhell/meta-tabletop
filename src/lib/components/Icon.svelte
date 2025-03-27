@@ -6,7 +6,7 @@
    export { _class as class }
 </script>
 
-<svg viewBox="0 0 {size} {size}" fill="currentColor" class={_class} on:click>
+<svg viewBox="0 0 {size} {size}" fill="currentColor" class={_class} role="img" on:click on:keydown={e => e.key === 'Enter' && dispatch('click')}>
    <path fill-rule="evenodd" clip-rule="evenodd" d={path} />
 </svg>
 

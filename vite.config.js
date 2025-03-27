@@ -1,81 +1,134 @@
-// File: meta-tabletop/vite.config.js
-// Project: CLIENT
-// Purpose: Vite configuration for SvelteKit and WindiCSS
+// File: meta-tabletop/svelte.config.js
+// Project: META-TABLETOP
+// Purpose: SvelteKit configuration for static adapter with Cloudflare Pages optimization
 
-import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig } from 'vite';
-import WindiCSS from 'vite-plugin-windicss';
+import adapter from '@sveltejs/adapter-static';
+import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
+import 'dotenv/config';
 
-export default defineConfig({
-  plugins: [
-    // SvelteKit plugin
-    sveltekit(),
-    
-    // WindiCSS integration
-    WindiCSS()
-  ],
+/** @type {import('@sveltejs/kit').Config} */
+const config = {
+  // Add preprocessing support for Svelte components
+  preprocess: vitePreprocess({
+    // Add preprocessing options for better performance
+    postcss: true,
+    // Ensure proper source maps
+    sourceMap: process.env.NODE_ENV !== 'production'
+  }),
   
-  // Build optimization for Cloudflare Pages
-  build: {
-    // Target newer browsers
-    target: 'es2020',
+  // Configure Svelte compiler options
+  compilerOptions: {
+    // Enable accessibility checks
+    a11y: {
+      // Don't fail the build on accessibility warnings
+      enable: true,
+      // Consider warnings as hints, not errors
+      failOnWarnings: false
+    },
+    // Enable CSS optimizations
+    css: true,
+    // Improve development experience with better error messages
+    dev: process.env.NODE_ENV !== 'production',
+    // Generate code to support immutability in Svelte
+    immutable: true
+  },
+  
+  kit: {
+    // Configure the static adapter for Cloudflare Pages
+    adapter: adapter({
+      // Output directory (can be overridden by BUILD_DIR env var)
+      pages: process.env.BUILD_DIR || 'build',
+      assets: process.env.BUILD_DIR || 'build',
+      
+      // Enable SPA mode with client-side routing
+      fallback: 'index.html',
+      
+      // Disable precompression since Cloudflare handles this automatically
+      precompress: false,
+      
+      // Ensure strict mode is disabled for compatibility
+      strict: false
+    }),
     
-    // Minify output
-    minify: true,
-    
-    // Make chunks smaller
-    chunkSizeWarningLimit: 1000,
-    
-    // Optimize dependencies
-    commonjsOptions: {
-      include: [/node_modules/]
+    // Environment variables configuration
+    env: {
+      dir: '.',
+      // Public environment variables prefix
+      publicPrefix: 'PUBLIC_',
+      // Private environment variables prefix (server-side only)
+      privatePrefix: 'PRIVATE_'
     },
     
-    // Enable source maps for development only
-    sourcemap: process.env.NODE_ENV !== 'prod',
+    // Path aliases for cleaner imports in your code
+    alias: {
+      '$lib': './src/lib',
+      '$components': './src/lib/components',
+      '$stores': './src/lib/stores',
+      '$util': './src/lib/util'
+    },
     
-    // Optimize output for Cloudflare Pages
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor: ['socket.io-client'],
+    // Prerendering configuration for static site generation
+    prerender: {
+      // Enable crawling for static site generation
+      crawl: true,
+      
+      // Handle errors during prerendering process
+      handleHttpError: ({ path, referrer, message }) => {
+        // Ignore expected "Not found" errors for client-side routes
+        if (message.includes('Not found')) {
+          return;
         }
-      }
-    }
-  },
-  
-  // Define environment variables to be replaced in client code
-  define: {
-    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV)
-  },
-  
-  // Optimize dependencies
-  optimizeDeps: {
-    include: ['socket.io-client']
-  },
-  
-  // Development server options
-  server: {
-    port: 3005,
-    strictPort: true,
-    host: true,
+        
+        // For other errors, log details and throw
+        console.error(`Error while prerendering: ${path} from ${referrer}: ${message}`);
+        throw new Error(message);
+      },
+      
+      // Handle missing IDs during prerendering
+      handleMissingId: 'ignore'
+    },
     
-    // Enable CORS for local development
-    cors: true,
-    
-    // Proxy API requests to the worker during development
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8787',
-        changeOrigin: true
+    // Content Security Policy configuration
+    csp: {
+      mode: 'auto',
+      directives: {
+        'default-src': ['self'],
+        'script-src': ['self', 'unsafe-inline'],
+        'style-src': ['self', 'unsafe-inline'],
+        'img-src': ['self', 'data:', 'https://images.pokemontcg.io', 'https://limitlesstcg.nyc3.digitaloceanspaces.com'],
+        'connect-src': [
+          'self',
+          // API domain
+          'api.tabletop.meta-ptcg.org',
+          // WebSocket connections
+          'wss://api.tabletop.meta-ptcg.org',
+          // Local development
+          'localhost:*',
+          'ws://localhost:*'
+        ]
       }
-    }
-  },
-  
-  // Preview server configuration (for local previewing of built site)
-  preview: {
-    port: 4173,
-    strictPort: true,
-    host: true
+    },
+    
+    // Paths to files that should trigger full page reloads during development
+    files: {
+      assets: 'static',
+      hooks: {
+        client: 'src/hooks.client',
+        server: 'src/hooks.server'
+      },
+      routes: 'src/routes',
+      serviceWorker: 'src/service-worker',
+      template: 'src/app.html'
+    },
+    
+    // Disable generating type definitions (not needed for Cloudflare Pages)
+    typescript: {
+      config: (config) => config
+    },
+    
+    // Configure how Vite is used
+    vite: () => ({})
   }
-});
+};
+
+export default config;
