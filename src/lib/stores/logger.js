@@ -1,5 +1,5 @@
 import { s } from '$lib/util/strings.js'
-import { publishLog } from './connection.js'
+import { publishToChat as publishLog } from './connection.js'
 import { prizesFlipped, handRevealed, pokemonHidden, findSlot } from './player.js'
 
 const slotRegex = /^([0-9a-z-]{36}).(pokemon|trainer|energy)$/i
