@@ -1,13 +1,13 @@
 // File: src/lib/stores/connection.js
 // Project: meta-tabletop (Client-side)
-// Purpose: Manages WebSocket connections using Socket.IO, including fallback logic and error handling.
+// Purpose: Manages WebSocket connections using Socket.IO, including fallback logic, error handling, and state management.
 
 import { writable } from './custom/writable.js'; // Assuming you have a custom writable store
 import { io } from 'socket.io-client';
 
 // 1. Environment Variable Retrieval and Fallback Setup
 const primaryServer = import.meta.env.VITE_PVP_SERVER; // Primary server URL from environment
-const fallbackServer = import.meta.env.VITE_PVP_SERVER_CLOUDFLARE || 'wss://your-fallback-server.com'; // Fallback from env, or default
+const fallbackServer = import.meta.env.VITE_PVP_SERVER_CLOUDFLARE || 'wss://tabletop-server.jasonh1993.workers.dev/socket.io'; // Fallback from env, or default
 
 // Validation: Check if the primary server URL is defined
 if (!primaryServer) {
@@ -127,4 +127,4 @@ if (import.meta.env.VITE_ENV === 'dev') {
 attemptConnection(primaryServer); // Start with the primary server URL
 
 // 7. Export Socket and Functions
-export { socket, connect, createRoom, joinRoom, leaveRoom, publishToChat, publishLog, react, share };
+export { socket, connect, joinRoom, leaveRoom, publishToChat, publishLog, react, share };
