@@ -99,22 +99,46 @@ function connect() {
     }
 }
 
-export function createRoom() {
+function createRoom() {
   connect();
   socket.emit('createRoom');
 }
 
-export function joinRoom(roomId) {
+function joinRoom(roomId) {
   connect();
   socket.emit('joinRoom', { roomId });
 }
 
-export function leaveRoom() {
+function leaveRoom() {
   socket.emit('leaveRoom', { roomId: room.get() });
   chat.set([]); // Clear chat on leaving room
 }
 
-// ... (rest of your helper functions: publishToChat, publishLog, react, share) ...
+function publishToChat(message) {
+  if (socket) {
+    socket.emit('chatMessage', { roomId: room.get(), message });
+  }
+}
+
+function publishLog(log){
+  if (socket){
+    socket.emit("logMessage", {roomId: room.get(), log});
+  }
+}
+
+function react(reaction){
+  if(socket){
+    socket.emit("reaction", {roomId: room.get(), reaction});
+  }
+}
+
+function share(card){
+  if(socket){
+    socket.emit("share", {roomId: room.get(), card});
+  }
+}
+
+// ... (rest of your helper functions: publishLog, react, share) ...
 
 // 5. Debugging (Optional, for development environment)
 if (import.meta.env.VITE_ENV === 'dev') {
@@ -127,4 +151,4 @@ if (import.meta.env.VITE_ENV === 'dev') {
 attemptConnection(primaryServer); // Start with the primary server URL
 
 // 7. Export Socket and Functions
-export { socket, connect, joinRoom, leaveRoom, publishToChat, publishLog, react, share };
+export { socket, connect, createRoom, joinRoom, leaveRoom, publishToChat, publishLog, react, share };
