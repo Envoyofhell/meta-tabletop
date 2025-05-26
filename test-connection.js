@@ -1,11 +1,12 @@
 // Simple test script to verify Socket.IO connection
 import { io } from 'socket.io-client';
 
-console.log('Testing Socket.IO connection to http://localhost:8787');
+console.log('Testing Socket.IO connection to https://socketio-test-worker.jasonh1993.workers.dev');
 
-const socket = io('http://localhost:8787', {
-  transports: ['polling', 'websocket'],
-  timeout: 5000,
+const socket = io('https://socketio-test-worker.jasonh1993.workers.dev', {
+  transports: ['polling'], // Use polling only for Cloudflare Worker
+  upgrade: false,
+  timeout: 10000,
   forceNew: true
 });
 
@@ -14,6 +15,7 @@ socket.on('connect', () => {
   console.log('Socket ID:', socket.id);
   
   // Test creating a room
+  console.log('🏠 Creating room...');
   socket.emit('createRoom');
 });
 
@@ -22,16 +24,32 @@ socket.on('disconnect', (reason) => {
 });
 
 socket.on('connect_error', (error) => {
-  console.error('❌ Connection error:', error.message);
+  console.error('❌ Connection error:', error.message || error);
 });
 
 socket.on('createdRoom', (data) => {
-  console.log('🏠 Room created:', data);
-  process.exit(0);
+  console.log('🏠 Room created successfully:', data);
+  
+  // Test sending a chat message
+  console.log('💬 Sending chat message...');
+  socket.emit('chatMessage', { 
+    roomId: data.roomId, 
+    message: 'Hello from test!',
+    type: 'chat'
+  });
+  
+  setTimeout(() => {
+    console.log('✅ Test completed successfully!');
+    process.exit(0);
+  }, 2000);
 });
 
-// Timeout after 10 seconds
+socket.on('chatMessage', (data) => {
+  console.log('💬 Chat message received:', data);
+});
+
+// Timeout after 15 seconds
 setTimeout(() => {
   console.log('⏰ Test timed out');
   process.exit(1);
-}, 10000); 
+}, 15000); 

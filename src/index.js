@@ -73,6 +73,15 @@ export default {
     const searchParams = url.searchParams;
     const transport = searchParams.get('transport');
     const sid = searchParams.get('sid');
+    const eio = searchParams.get('EIO');
+    
+    // Validate Engine.IO version
+    if (eio !== '4') {
+      return new Response('Unsupported Engine.IO version', { 
+        status: 400,
+        headers: corsHeaders 
+      });
+    }
     
     if (request.method === 'GET') {
       if (transport === 'polling') {
@@ -120,6 +129,7 @@ async function handlePollingGet(searchParams) {
     
     console.log(`Handshake created for session ${sessionId}`);
     
+    // Proper Engine.IO v4 handshake response format
     const response = ENGINE_IO_PACKETS.OPEN + JSON.stringify(handshakeData);
     return new Response(response, {
       status: 200,
@@ -185,56 +195,85 @@ async function handlePollingPost(request, searchParams) {
   const session = sessions.get(sid);
   
   if (!session) {
+    console.log(`Session not found for POST: ${sid}`);
     return new Response('Session not found', { 
       status: 400,
       headers: corsHeaders 
     });
   }
   
-  const body = await request.text();
-  console.log(`Received POST data from session ${sid}: ${body}`);
-  
-  session.lastActivity = Date.now();
-  
-  // Parse Engine.IO packets
-  const packets = parseEngineIOPackets(body);
-  
-  for (const packet of packets) {
-    console.log(`Engine.IO packet from ${sid}: type=${packet.type}, payload=${packet.payload}`);
+  try {
+    const body = await request.text();
+    console.log(`Received POST data from session ${sid}: ${body}`);
     
-    if (packet.type === ENGINE_IO_PACKETS.MESSAGE) {
-      // Handle Socket.IO message
-      const socketIOPacket = parseSocketIOPacket(packet.payload);
-      console.log(`Socket.IO packet from ${sid}: type=${socketIOPacket.type}, data=${JSON.stringify(socketIOPacket.data)}`);
+    session.lastActivity = Date.now();
+    
+    // Parse Engine.IO packets - handle both single packets and payload format
+    const packets = parseEngineIOPackets(body);
+    
+    for (const packet of packets) {
+      console.log(`Engine.IO packet from ${sid}: type=${packet.type}, payload=${packet.payload}`);
       
-      if (socketIOPacket.type === SOCKET_IO_PACKETS.EVENT) {
-        handleSocketIOEvent(sid, session, socketIOPacket.data);
+      if (packet.type === ENGINE_IO_PACKETS.MESSAGE) {
+        // Handle Socket.IO message
+        const socketIOPacket = parseSocketIOPacket(packet.payload);
+        console.log(`Socket.IO packet from ${sid}: type=${socketIOPacket.type}, data=${JSON.stringify(socketIOPacket.data)}`);
+        
+        if (socketIOPacket.type === SOCKET_IO_PACKETS.EVENT) {
+          handleSocketIOEvent(sid, session, socketIOPacket.data);
+        }
+      } else if (packet.type === ENGINE_IO_PACKETS.PING) {
+        // Respond with PONG
+        session.messageQueue.push(ENGINE_IO_PACKETS.PONG);
+        console.log(`Queued PONG response for session ${sid}`);
       }
-    } else if (packet.type === ENGINE_IO_PACKETS.PING) {
-      // Respond with PONG
-      session.messageQueue.push(ENGINE_IO_PACKETS.PONG);
     }
+    
+    return new Response('ok', {
+      status: 200,
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'text/plain; charset=UTF-8'
+      }
+    });
+  } catch (error) {
+    console.error(`Error handling POST for session ${sid}:`, error);
+    return new Response('Internal Server Error', { 
+      status: 500,
+      headers: corsHeaders 
+    });
   }
-  
-  return new Response('ok', {
-    status: 200,
-    headers: {
-      ...corsHeaders,
-      'Content-Type': 'text/plain; charset=UTF-8'
-    }
-  });
 }
 
 function parseEngineIOPackets(data) {
   const packets = [];
-  let i = 0;
   
+  // Handle single packet (no length prefix)
+  if (!data.includes(':')) {
+    const type = data[0];
+    const payload = data.substring(1);
+    packets.push({ type, payload });
+    return packets;
+  }
+  
+  // Handle payload format with length prefixes
+  let i = 0;
   while (i < data.length) {
     // Find packet length
     let lengthEnd = data.indexOf(':', i);
-    if (lengthEnd === -1) break;
+    if (lengthEnd === -1) {
+      // No more length prefixes, treat rest as single packet
+      if (i < data.length) {
+        const type = data[i];
+        const payload = data.substring(i + 1);
+        packets.push({ type, payload });
+      }
+      break;
+    }
     
     const length = parseInt(data.substring(i, lengthEnd));
+    if (isNaN(length)) break;
+    
     const packetStart = lengthEnd + 1;
     const packetEnd = packetStart + length;
     
@@ -309,6 +348,28 @@ function handleSocketIOEvent(sessionId, session, eventData) {
         
         // Notify other players
         broadcastToRoom(targetRoomId, 'playerJoined', { sessionId }, sessionId);
+      } else {
+        console.log(`Failed to join room ${targetRoomId} for session ${sessionId}`);
+      }
+      break;
+      
+    case 'leaveRoom':
+      if (session.roomId) {
+        const room = rooms.get(session.roomId);
+        if (room) {
+          room.players = room.players.filter(p => p !== sessionId);
+          if (room.players.length === 0) {
+            rooms.delete(session.roomId);
+          } else {
+            broadcastToRoom(session.roomId, 'playerLeft', { sessionId }, sessionId);
+          }
+        }
+        session.roomId = null;
+        
+        // Queue response
+        const leaveResponse = ENGINE_IO_PACKETS.MESSAGE + SOCKET_IO_PACKETS.EVENT + 
+          JSON.stringify(['leftRoom', {}]);
+        session.messageQueue.push(leaveResponse);
       }
       break;
       
@@ -345,11 +406,14 @@ function broadcastToRoom(roomId, eventName, data, excludeSessionId = null) {
   const message = ENGINE_IO_PACKETS.MESSAGE + SOCKET_IO_PACKETS.EVENT + 
     JSON.stringify([eventName, data]);
   
+  console.log(`Broadcasting to room ${roomId}: ${eventName}`);
+  
   for (const playerId of room.players) {
     if (playerId !== excludeSessionId) {
       const playerSession = sessions.get(playerId);
       if (playerSession) {
         playerSession.messageQueue.push(message);
+        console.log(`Queued message for player ${playerId}`);
       }
     }
   }
