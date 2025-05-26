@@ -1,0 +1,4 @@
+name = "socketio-test-worker"
+main = "./src/index.js"
+compatibility_date = "2023-11-15"
+compatibility_flags = ["nodejs_compat"] 

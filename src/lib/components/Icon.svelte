@@ -1,9 +1,13 @@
 <script>
+   import { createEventDispatcher } from 'svelte'
+   
    export let path
    export let size = 24
 
    let _class = ""
    export { _class as class }
+   
+   const dispatch = createEventDispatcher()
 </script>
 
 <svg viewBox="0 0 {size} {size}" fill="currentColor" class={_class} role="img" on:click on:keydown={e => e.key === 'Enter' && dispatch('click')}>

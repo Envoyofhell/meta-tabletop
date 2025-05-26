@@ -17,11 +17,11 @@ let socket;
 // Connection URLs from environment variables with fallbacks
 const primaryServer = browser && import.meta.env.VITE_PVP_SERVER 
   ? import.meta.env.VITE_PVP_SERVER 
-  : 'wss://api.table.meta-ptcg.org';
+  : 'https://tabletop-server.jasonh1993.workers.dev';
 
 const fallbackServer = browser && import.meta.env.VITE_PVP_SERVER_CLOUDFLARE 
   ? import.meta.env.VITE_PVP_SERVER_CLOUDFLARE 
-  : 'wss://tabletop-server.jasonh1993.workers.dev/socket.io';
+  : 'https://tabletop-server.jasonh1993.workers.dev';
 
 // Initialize socket and connections
 function initializeSocket() {
@@ -43,7 +43,7 @@ function initializeSocket() {
       
       // Create new socket instance with optimized options
       socket = io(serverUrl, {
-        transports: ['websocket'],
+        transports: ['polling', 'websocket'],
         reconnectionAttempts: 3,
         reconnectionDelay: 1000,
         timeout: 5000,

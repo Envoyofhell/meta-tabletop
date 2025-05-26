@@ -18,5 +18,8 @@
         "vite": "^4.4.9",
         "vite-plugin-windicss": "^1.9.2",
         "wrangler": "^3.0.0"
+    },
+    "dependencies": {
+        "node-fetch": "^3.3.2"
     }
 }
